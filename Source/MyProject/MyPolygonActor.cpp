@@ -65,10 +65,10 @@ void AMyPolygonActor::BuildPolygonFilled()
 	TArray<FLinearColor> Colors;
 	TArray<int32> Triangles;
 
-	FVector Point, DirHorz;
+	FVector Point, RotationDir{0}; // Rotation Vector
 	FVector V0, LastV0;
 	int32 I0, LastI0 = 0;
-	float Theta, SinTheta, CosTheta;
+	float Theta;
 
 	// Center point
 	I0 = Vertices.Add(FVector::ZeroVector);
@@ -77,19 +77,17 @@ void AMyPolygonActor::BuildPolygonFilled()
 	for (uint32 i = 0; i <= Side; ++i)
 	{
 		Theta = FMath::DegreesToRadians(i * 360.0f / Side);
-		FMath::SinCos<float>(&SinTheta, &CosTheta, Theta);
+		FMath::SinCos<double>(&RotationDir.Y, &RotationDir.X, Theta);
 
-		Point = FVector(SinTheta * Radius, CosTheta * Radius, 0.0f);
-		
+		Point = RotationDir * Radius;
+
 		I0 = Vertices.Add(Point);
 
 		Colors.Add(Color);
 
-		if (i > 0)	// Generate triangles after first index
+		if (i > 0)	// Add triangle indices after first index
 		{
-			Triangles.Add(LastI0);
-			Triangles.Add(I0);
-			Triangles.Add(0);
+			Triangles.Append({ 0, LastI0, I0 });
 		}
 
 		LastV0 = V0;		
@@ -106,38 +104,36 @@ void AMyPolygonActor::BuildPolygonEmpty()
 	TArray<FLinearColor> Colors;
 	TArray<int32> Triangles;
 
-	FVector Point, DirHorz; // Direction Up, Out
+	FVector Point, RotationDir{ 0 }; // Rotation Vector
 	FVector V0, V1;
 	FVector LastV0, LastV1;
 	int32 I0, I1;
 	int32 LastI0, LastI1 = 0;
-	float Theta, SinTheta, CosTheta;
+	float Theta;
 	float HalfThickness = Thickness * 0.5f;	// Half length of thickness
 
 	for (uint32 i = 0; i <= Side; ++i)
 	{
 		Theta = FMath::DegreesToRadians(i * 360.0f / Side);
-		FMath::SinCos<float>(&SinTheta, &CosTheta, Theta);
+		FMath::SinCos<double>(&RotationDir.Y, &RotationDir.X, Theta);
 
-		Point = FVector(SinTheta * Radius, CosTheta * Radius, 0.0f);
-		DirHorz = FVector(SinTheta, CosTheta, 0.0f);
+		Point = RotationDir * Radius;
 
-		V0 = Point + DirHorz * HalfThickness;
-		V1 = Point + DirHorz * -HalfThickness;
+		V0 = Point + RotationDir * HalfThickness;	// outward point from center
+		V1 = Point - RotationDir * HalfThickness;	// inward point from center
 
 		I0 = Vertices.Add(V0);
 		I1 = Vertices.Add(V1);
 
-		Normals.Add(DirHorz);
-		Normals.Add(-DirHorz);
+		Normals.Add(RotationDir);
+		Normals.Add(-RotationDir);
 
 		Colors.Add(Color);
 		Colors.Add(Color);
 
-		if (i > 0)	// Generate triangles after first index
+		if (i > 0)	// Add rectangle (two triangles) indices after first index
 		{
-			Triangles.Add(LastI0); Triangles.Add(I0); Triangles.Add(I1);
-			Triangles.Add(I1); Triangles.Add(LastI1); Triangles.Add(LastI0);
+			Triangles.Append({ LastI0, I0, I1, I1, LastI1, LastI0 });
 		}
 
 		LastV0 = V0;
